@@ -7,3 +7,4 @@ google-generativeai
 PyMuPDF
 spacy
 scikit-learn
+pypdf
