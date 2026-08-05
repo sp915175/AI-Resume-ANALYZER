@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+    <meta charset="UTF-8">
     <title>AI Resume Analyzer</title>
 
     <link rel="stylesheet" href="/static/css/style.css">
-
 </head>
 
 <body>
@@ -13,60 +14,77 @@
 
     <h1>AI Resume Analyzer</h1>
 
-    <input type="file" id="resume">
+    <input type="file" id="resume" accept=".pdf">
+
+    <br><br>
 
     <button onclick="uploadResume()">
         Analyze Resume
     </button>
 
+    <br><br>
 
     <div id="result"></div>
 
 </div>
 
-
 <script>
 
-async function uploadResume(){
+async function uploadResume() {
 
-    let file = document.getElementById("resume").files[0];
+    const file = document.getElementById("resume").files[0];
 
-    let formData = new FormData();
+    if (!file) {
+        alert("Please select a resume.");
+        return;
+    }
 
-    formData.append("resume", file);
-
-
-    let response = await fetch(
-        "http://127.0.0.1:8000/upload",
-        {
-            method:"POST",
-            body:formData
-        }
-    );
-
-
-    let data = await response.json();
-
-
+    const formData = new FormData();
+   formData.append("file", file);
     document.getElementById("result").innerHTML =
-    `
-    <h2>Result</h2>
+    "<h3>Analyzing Resume...</h3>";
 
-    <p><b>ATS Score:</b> ${data.ats_score}</p>
+    try {
 
-    <p><b>Skills:</b> ${data.skills}</p>
+        const response = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
 
-    <p><b>Missing Skills:</b> ${data.missing_skills}</p>
+        const data = await response.json();
 
-    <p><b>Suggestions:</b> ${data.suggestions}</p>
+        if(data.error){
+            document.getElementById("result").innerHTML =
+            "<h3 style='color:red'>" + data.error + "</h3>";
+            return;
+        }
 
-    <p><b>Summary:</b> ${data.resume_summary}</p>
-    `;
+       document.getElementById("result").innerHTML = `
+<h2>Resume Analysis</h2>
+
+<p><b>ATS Score:</b> ${data.ats_score}</p>
+
+<p><b>Skills:</b> ${data.skills.join(", ")}</p>
+
+<p><b>Missing Skills:</b> ${data.missing_skills.join(", ")}</p>
+
+<p><b>Resume Text:</b></p>
+<pre>${data.resume_text}</pre>
+`;
+
+    }
+    catch(err){
+
+        console.error(err);
+
+        document.getElementById("result").innerHTML =
+        "<h3 style='color:red'>Server Error</h3>";
+
+    }
 
 }
 
 </script>
-
 
 </body>
 </html>

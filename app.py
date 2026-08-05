@@ -1,98 +1,68 @@
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request, UploadFile, File
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from fastapi import Request
-from fastapi import FastAPI, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+import shutil
+import os
 
 from utils.pdf_parser import extract_text
 from utils.skill_extractor import extract_skills
 from utils.ats_score import calculate_ats_score
 from utils.missing_skills import get_missing_skills
 
-app = FastAPI(title="AI Resume Analyzer")
+app = FastAPI()
+
+# Folders
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Templates
 templates = Jinja2Templates(directory="templates")
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
-@app.get("/")
-def home(request: Request):
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
     return templates.TemplateResponse(
-    request=request,
-    name="index.html",
-    context={
-        "request": request
-    }
-)
+        "index.html",
+        {"request": request}
+    )
+
 
 @app.post("/upload")
-async def upload_resume(resume: UploadFile = File(...)):
-    # PDF text निकालो
-    resume_text = extract_text(resume.file)
-    # Skills निकालो
-    skills = extract_skills(resume_text)
+async def upload_resume(file: UploadFile = File(...)):
+    try:
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
 
-    # ATS Score निकालो
-    ats_score = calculate_ats_score(skills)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    # Missing Skills निकालो
-    missing_skills = get_missing_skills(skills)
+        # Extract Resume Text
+        resume_text = extract_text(file_path)
 
-    # Strengths
-    strengths = []
+        # Extract Skills
+        skills = extract_skills(resume_text)
 
-    if "Python" in skills:
-        strengths.append("Good Python knowledge")
+        # Missing Skills
+        missing_skills = get_missing_skills(skills)
 
-    if "SQL" in skills:
-        strengths.append("Knows SQL")
+        # ATS Score
+        ats_score = calculate_ats_score(skills)
 
-    if "Java" in skills:
-        strengths.append("Has Java knowledge")
+        return {
+            "filename": file.filename,
+            "skills": skills,
+            "missing_skills": missing_skills,
+            "ats_score": ats_score,
+            "resume_text": resume_text
+        }
 
-    if "Communication" in skills:
-        strengths.append("Good communication skills")
-
-    # Suggestions
-    suggestions = []
-
-    if "Docker" in missing_skills:
-        suggestions.append("Learn Docker")
-
-    if "AWS" in missing_skills:
-        suggestions.append("Learn AWS")
-
-    if "Git" in missing_skills:
-        suggestions.append("Learn Git")
-
-    if "Machine Learning" in missing_skills:
-        suggestions.append("Learn Machine Learning")
-
-    # Resume Summary
-    if ats_score >= 80:
-        summary = "Excellent Resume. Ready for most software developer roles."
-
-    elif ats_score >= 60:
-        summary = "Good Resume. Add a few missing skills to improve your chances."
-
-    else:
-        summary = "Resume needs improvement. Add more technical skills and projects."
-
-    return {
-        "filename": resume.filename,
-        "skills": skills,
-        "missing_skills": missing_skills,
-        "ats_score": ats_score,
-        "strengths": strengths,
-        "suggestions": suggestions,
-        "resume_summary": summary,
-        "text": resume_text
-    }
+    except Exception as e:
+        return {
+            "error": str(e)
+        if __name__ == "__main__":
+    app.run(debug=True)
+        }
