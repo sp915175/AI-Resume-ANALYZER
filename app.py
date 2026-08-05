@@ -11,9 +11,9 @@ from utils.skill_extractor import extract_skills
 from utils.ats_score import calculate_ats_score
 from utils.missing_skills import get_missing_skills
 
-app = FastAPI()
+app = FastAPI(title="AI Resume Analyzer")
 
-# Folders
+# Upload folder
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -35,22 +35,28 @@ async def home(request: Request):
 @app.post("/upload")
 async def upload_resume(file: UploadFile = File(...)):
     try:
+        # Allow only PDF
+        if not file.filename.lower().endswith(".pdf"):
+            return {
+                "error": "Please upload a PDF resume."
+            }
+
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Extract Resume Text
+        # Extract text
         resume_text = extract_text(file_path)
 
-        # Extract Skills
+        # Extract skills
         skills = extract_skills(resume_text)
-
-        # Missing Skills
-        missing_skills = get_missing_skills(skills)
 
         # ATS Score
         ats_score = calculate_ats_score(skills)
+
+        # Missing Skills
+        missing_skills = get_missing_skills(skills)
 
         return {
             "filename": file.filename,
@@ -63,6 +69,4 @@ async def upload_resume(file: UploadFile = File(...)):
     except Exception as e:
         return {
             "error": str(e)
-        if __name__ == "__main__":
-    app.run(debug=True)
         }
