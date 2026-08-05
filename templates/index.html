@@ -40,7 +40,7 @@ async function uploadResume() {
     }
 
     const formData = new FormData();
-   formData.append("file", file);
+   formData.append("resume", file);
     document.getElementById("result").innerHTML =
     "<h3>Analyzing Resume...</h3>";
 
@@ -53,6 +53,7 @@ async function uploadResume() {
 
         const data = await response.json();
 
+        console.log(data);
         if(data.error){
             document.getElementById("result").innerHTML =
             "<h3 style='color:red'>" + data.error + "</h3>";
