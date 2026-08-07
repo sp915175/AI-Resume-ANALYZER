@@ -27,14 +27,14 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(
-    "index.html",
-    {"request": request}
-)
+        "index.html",
+        {"request": request}
+    )
+
 
 @app.post("/upload")
 async def upload_resume(file: UploadFile = File(...)):
     try:
-        # Allow only PDF
         if not file.filename.lower().endswith(".pdf"):
             return {
                 "error": "Please upload a PDF resume."
@@ -45,16 +45,9 @@ async def upload_resume(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Extract text
         resume_text = extract_text(file_path)
-
-        # Extract skills
         skills = extract_skills(resume_text)
-
-        # ATS Score
         ats_score = calculate_ats_score(skills)
-
-        # Missing Skills
         missing_skills = get_missing_skills(skills)
 
         return {
